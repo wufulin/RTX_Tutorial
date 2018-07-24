@@ -92,7 +92,9 @@ __task void AppTaskPrintf(void)
 
   while (1)
   {
+    tsk_lock();
     SEGGER_RTT_printf(0, "Hello App Task Printf\n");
+    tsk_unlock();
     // os_dly_wait(100);
     /* os_itv_wait 是绝对延迟， os_dly_wait 是相对延迟 */
     os_itv_wait();
@@ -109,10 +111,10 @@ __task void AppTaskPrintf(void)
   */
 static void AppTaskCreate(void)
 {
-  HandleTaskPrintf = os_tsk_create_user(AppTaskPrintf,
-                                        1,
-                                        &AppTaskPrintfStk,
-                                        sizeof(AppTaskPrintfStk));
+  HandleTaskPrintf = os_tsk_create_user(AppTaskPrintf,                  /* 任务函数 */
+                                        1,                              /* 任务优先级 */
+                                        &AppTaskPrintfStk,              /* 任务栈 */
+                                        sizeof(AppTaskPrintfStk));      /* 任务栈大小 */
 
   os_tsk_create_user(AppTaskScan,
                      1,
