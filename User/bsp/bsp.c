@@ -42,7 +42,7 @@ void bsp_Init(void)
 	//bsp_InitLed();		/* 配置LED的GPIO端口 */
 	//bsp_InitKey();		/* 初始化按键 */
 	
-	// bsp_InitTimer();	/* 初始化系统滴答定时器 (此函数会开中断) */
+	bsp_InitTimer();	/* 初始化系统滴答定时器 (此函数会开中断) */
 }
 
 /*

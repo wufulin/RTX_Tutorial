@@ -12,6 +12,10 @@
 #include "bsp_rtt.h"
 #include "RTL.h"
 
+#define BIT_0 (1 << 0)
+#define BIT_1 (1 << 1)
+#define BIT_ALL (BIT_0 | BIT_1)
+
 /**
   ******************************************************************************
   *                                 变量声明                                     
@@ -51,8 +55,10 @@ __task void AppTaskScan(void)
   while (1)
   {
     SEGGER_RTT_printf(0, "Hello App Task Scan\n");
+    SEGGER_RTT_printf(0, "%d\r\n", os_time_get());
     // os_dly_wait(100);
     /* os_itv_wait 是绝对延迟， os_dly_wait 是相对延迟 */
+    bsp_StartHardTimer(1, 50000, (void *)TIM_CallBack1);
     os_itv_wait();
   }
 }
@@ -70,8 +76,11 @@ __task void AppTaskStart(void)
   AppTaskCreate();
   while (1)
   {
-    SEGGER_RTT_printf(0, "Hello App TaskStart\n");
-    os_dly_wait(200);
+    os_dly_wait(2000);
+    os_evt_set(BIT_ALL, HandleTaskPrintf);
+    tsk_lock();
+    SEGGER_RTT_printf(0, "Hello App Task Start\n");
+    tsk_unlock();
   }
 }
 
@@ -85,6 +94,8 @@ __task void AppTaskStart(void)
   */
 __task void AppTaskPrintf(void)
 {
+  OS_RESULT xResult;
+  const uint16_t usMaxBlockTime = 1500;
   const uint16_t usFrequency = 200;
 
   /* 设置延迟周期 */
@@ -92,12 +103,20 @@ __task void AppTaskPrintf(void)
 
   while (1)
   {
-    tsk_lock();
-    SEGGER_RTT_printf(0, "Hello App Task Printf\n");
-    tsk_unlock();
-    // os_dly_wait(100);
     /* os_itv_wait 是绝对延迟， os_dly_wait 是相对延迟 */
-    os_itv_wait();
+    // os_itv_wait();
+    xResult = os_evt_wait_and(BIT_ALL, usMaxBlockTime);
+    switch (xResult)
+    {
+    case OS_R_EVT:
+      SEGGER_RTT_printf(0, "Hello App Task Printf\n");
+      break;
+    case OS_R_TMO:
+      SEGGER_RTT_printf(0, "Time out\r\n");
+      break;
+    default:
+      break;
+    }
   }
 }
 
@@ -111,10 +130,10 @@ __task void AppTaskPrintf(void)
   */
 static void AppTaskCreate(void)
 {
-  HandleTaskPrintf = os_tsk_create_user(AppTaskPrintf,                  /* 任务函数 */
-                                        1,                              /* 任务优先级 */
-                                        &AppTaskPrintfStk,              /* 任务栈 */
-                                        sizeof(AppTaskPrintfStk));      /* 任务栈大小 */
+  HandleTaskPrintf = os_tsk_create_user(AppTaskPrintf,             /* 任务函数 */
+                                        1,                         /* 任务优先级 */
+                                        &AppTaskPrintfStk,         /* 任务栈 */
+                                        sizeof(AppTaskPrintfStk)); /* 任务栈大小 */
 
   os_tsk_create_user(AppTaskScan,
                      1,
