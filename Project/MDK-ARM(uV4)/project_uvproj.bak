@@ -210,7 +210,7 @@
             <GenPPlst>0</GenPPlst>
             <AdsCpuType>"Cortex-M3"</AdsCpuType>
             <RvctDeviceName></RvctDeviceName>
-            <mOS>1</mOS>
+            <mOS>0</mOS>
             <uocRom>0</uocRom>
             <uocRam>0</uocRam>
             <hadIROM>1</hadIROM>
@@ -409,11 +409,6 @@
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\User\app\src\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>RTX_Conf_CM.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\User\app\src\RTX_Conf_CM.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -952,11 +947,6 @@
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\User\app\src\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>RTX_Conf_CM.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\User\app\src\RTX_Conf_CM.c</FilePath>
             </File>
           </Files>
         </Group>

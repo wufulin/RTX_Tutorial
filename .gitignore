@@ -78,6 +78,12 @@ dkms.conf
 *.[Mm]66
 *.SCR
 *.scr
+*.crf
+*.txt
+output.axf
+output.sct
+output.htm
+*.iex
 
 # LINK output
 *.ABS

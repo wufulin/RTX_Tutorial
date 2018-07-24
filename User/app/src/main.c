@@ -1,106 +1,107 @@
-/*
-*********************************************************************************************************
-*
-*	Ä£¿éÃû³Æ : Ö÷³ÌĞòÄ£¿é¡£
-*	ÎÄ¼şÃû³Æ : main.c
-*	°æ    ±¾ : V1.0
-*	Ëµ    Ã÷ : ¹¤³Ìµ÷ÊÔÀûÆ÷SEGGERµÄRTT×é¼ş£¬Ìæ´ú´®¿Úµ÷ÊÔ
-*	ĞŞ¸Ä¼ÇÂ¼ : 
-*		°æ±¾ºÅ    ÈÕÆÚ        ×÷Õß     ËµÃ÷
-*		V1.0    2018-04-12   armfly    Ê×·¢
-*
-*	Copyright (C), 2018-2030, °²¸»À³µç×Ó www.armfly.com
-*
-*********************************************************************************************************
-*/
-#include "bsp.h"			/* µ×²ãÓ²¼şÇı¶¯ */
+    /**
+  ******************************************************************************
+  * @file    main.c
+  * @author  wufulin
+  * @version V1.0
+  * @date    2018-07-20
+  * 
+  * Copyright (C), 2018-2019, wufulin
+  ******************************************************************************
+  */
+#include "bsp.h"			/* åº•å±‚ç¡¬ä»¶é©±åŠ¨ */
 #include "bsp_rtt.h"
+#include "RTL.h"
 
 
+/**
+  ******************************************************************************
+  *                                 å˜é‡å£°æ˜                                     
+  ******************************************************************************
+  */
+static uint64_t AppTaskPrintfStk[256];          /* ä»»åŠ¡æ ˆ */
+static uint64_t AppTaskStartStk[256];           
 
-/*
-*********************************************************************************************************
-*	º¯ Êı Ãû: main
-*	¹¦ÄÜËµÃ÷: c³ÌĞòÈë¿Ú
-*	ĞÎ    ²Î£ºÎŞ
-*	·µ »Ø Öµ: ´íÎó´úÂë(ÎŞĞè´¦Àí)
-*********************************************************************************************************
-*/
-int main(void)
+OS_TID HandleTaskPrintf = NULL;                /* ä»»åŠ¡å¥æŸ„ */
+
+/**
+  ******************************************************************************
+  *                                 å‡½æ•°å£°æ˜                                     
+  ******************************************************************************
+  */
+ __task void AppTaskStart(void);
+ __task void AppTaskPrintf(void);
+ static void AppTaskCreate(void);
+
+/**
+  ******************************************************************************
+  *  å‡½ æ•° å: AppTaskStart
+  *  åŠŸèƒ½è¯´æ˜: å¯åŠ¨ä»»åŠ¡ï¼Œä¼˜å…ˆçº§2
+  *  å½¢    å‚: æ— 
+  *  è¿” å› å€¼: æ— 
+  ******************************************************************************
+  */
+__task void AppTaskStart(void)
 {
-	uint8_t ucKeyCode;		/* °´¼ü´úÂë */
-	uint32_t i = 0;
-	int GetKey;
-
-	/*
-		ÓÉÓÚST¹Ì¼ş¿âµÄÆô¶¯ÎÄ¼şÒÑ¾­Ö´ĞĞÁËCPUÏµÍ³Ê±ÖÓµÄ³õÊ¼»¯£¬ËùÒÔ²»±ØÔÙ´ÎÖØ¸´ÅäÖÃÏµÍ³Ê±ÖÓ¡£
-		Æô¶¯ÎÄ¼ş startup_stm32f4xx.s »áµ÷ÓÃ system_stm32f4xx.c ÖĞµÄ void SystemInit(void)¡£
-		SystemInit()º¯ÊıÅäÖÃÁËCPUÖ÷Ê±ÖÓÆµÂÊ¡¢ÄÚ²¿Flash·ÃÎÊËÙ¶ÈºÍ¿ÉÑ¡µÄÍâ²¿SRAM FSMC³õÊ¼»¯¡£
-
-		°²¸»À³STM32-V5¿ª·¢°åÖ÷¾§ÕñÊÇ25MHz, ÄÚ²¿PLL±¶Æµµ½168MHz¡£Èç¹ûĞèÒª¸ü¸ÄÖ÷Æµ£¬¿ÉÒÔĞŞ¸ÄÏÂÃæµÄÎÄ¼ş£º
-		\User\bsp_stm32f4xx\system_stm32f4xx.c
-		ÎÄ¼ş¿ªÍ·µÄ¼¸¸öºêÊÇPLL±¶Æµ²ÎÊı£¬ĞŞ¸ÄÕâĞ©ºê¾Í¿ÉÒÔĞŞ¸ÄÖ÷Æµ£¬ÎŞĞè¸ü¸ÄÓ²¼ş¡£
-	*/
-
-	bsp_Init();		/* Ó²¼ş³õÊ¼»¯ */
-
-	bsp_StartAutoTimer(0, 100);	/* Æô¶¯1¸ö100msµÄ×Ô¶¯ÖØ×°µÄ¶¨Ê±Æ÷ */
-	
-	bsp_RTT_Init();
-
-	/* ½øÈëÖ÷³ÌĞòÑ­»·Ìå */
-	while (1)
+	AppTaskCreate();
+	while(1)
 	{
-		bsp_Idle();		/* Õâ¸öº¯ÊıÔÚbsp.cÎÄ¼ş¡£ÓÃ»§¿ÉÒÔĞŞ¸ÄÕâ¸öº¯ÊıÊµÏÖCPUĞİÃßºÍÎ¹¹· */
-
-		/* ÅĞ¶Ï¶¨Ê±Æ÷³¬Ê±Ê±¼ä */
-		if (bsp_CheckTimer(0))	
-		{
-			bsp_LedToggle(4);	
-			SEGGER_RTT_printf(0, "test rtt_printf");
-		}
-		
-		/* ×öÒ»¸ö¼òµ¥µÄ»Ø»·¹¦ÄÜ */
-		if (SEGGER_RTT_HasKey()) 
-		{
-			GetKey = SEGGER_RTT_GetKey();
-			SEGGER_RTT_SetTerminal(0);
-			SEGGER_RTT_printf(0, "SEGGER_RTT_GetKey = %c\r\n", GetKey);
-		}
-
-		/* °´¼üÂË²¨ºÍ¼ì²âÓÉºóÌ¨systickÖĞ¶Ï·şÎñ³ÌĞòÊµÏÖ£¬ÎÒÃÇÖ»ĞèÒªµ÷ÓÃbsp_GetKey¶ÁÈ¡¼üÖµ¼´¿É¡£ */
-		ucKeyCode = bsp_GetKey();	/* ¶ÁÈ¡¼üÖµ, ÎŞ¼ü°´ÏÂÊ±·µ»Ø KEY_NONE = 0 */
-		if (ucKeyCode != KEY_NONE)
-		{
-			switch (ucKeyCode)
-			{
-				case KEY_DOWN_K1:			/* K1¼ü°´ÏÂ */
-					SEGGER_RTT_SetTerminal(1);
-					SEGGER_RTT_WriteString(0,
-										   RTT_CTRL_RESET"Red: " \
-										   RTT_CTRL_TEXT_RED"This text is red. " \
-										   RTT_CTRL_TEXT_BLACK"" \
-										   RTT_CTRL_BG_BRIGHT_GREEN"This background is green. " \
-										   RTT_CTRL_RESET"Normal text again.\r\n");
-				
-					break;
-
-				case KEY_DOWN_K2:			/* K2¼ü°´ÏÂ */
-					SEGGER_RTT_SetTerminal(2);
-					SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN"KEY_DOWN_K2, ArmFly Real-Time-Terminal Sample\r\n");
-					break;
-
-				case KEY_DOWN_K3:			/* K3¼ü°´ÏÂ */
-					SEGGER_RTT_SetTerminal(3);
-					SEGGER_RTT_printf(0, "KEY_DOWN_K3, i = %d\r\n", i++);
-					break;
-
-				default:
-					/* ÆäËüµÄ¼üÖµ²»´¦Àí */
-					break;
-			}
-		}
+		SEGGER_RTT_printf(0, "Hello App TaskStart\n");
+		os_dly_wait(200);
 	}
 }
 
-/***************************** °²¸»À³µç×Ó www.armfly.com (END OF FILE) *********************************/
+/**
+  ******************************************************************************
+  *  å‡½ æ•° å: AppTaskPrintf
+  *  åŠŸèƒ½è¯´æ˜: SEGGER_RTT æ‰“å°
+  *  å½¢    å‚: æ— 
+  *  è¿” å› å€¼: æ— 
+  ******************************************************************************
+  */
+ __task void AppTaskPrintf(void)
+ {
+	 while(1)
+	 {
+		 SEGGER_RTT_printf(0, "Hello App Task Printf\n");
+		 os_dly_wait(100);
+	 }
+ }
+
+/**
+  ******************************************************************************
+  *  å‡½ æ•° å: AppTaskCreate
+  *  åŠŸèƒ½è¯´æ˜: åˆ›å»ºåº”ç”¨ä»»åŠ¡
+  *  å½¢    å‚: æ— 
+  *  è¿” å› å€¼: æ— 
+  ******************************************************************************
+  */
+ static void AppTaskCreate(void)
+ {
+	 HandleTaskPrintf = os_tsk_create_user(AppTaskPrintf,              
+	                      	 			         1,
+										                     &AppTaskPrintfStk,
+										                     sizeof(AppTaskPrintfStk));
+ }
+
+/**
+  ******************************************************************************
+  *  å‡½ æ•° å: main
+  *  åŠŸèƒ½è¯´æ˜: cç¨‹åºå…¥å£
+  *  å½¢    å‚: æ— 
+  *  è¿” å› å€¼: é”™è¯¯ä»£ç (æ— éœ€å¤„ç†)
+  ******************************************************************************
+  */
+int main(void)
+{
+	bsp_Init();		       /* åˆå§‹åŒ–å¤–è®¾ */
+	bsp_RTT_Init();        /* åˆå§‹åŒ–SEGGER_RTT */
+
+	/* åˆ›å»ºå¯åŠ¨ä»»åŠ¡ */
+	os_sys_init_user(AppTaskStart,                  /* ä»»åŠ¡å‡½æ•° */
+	                 2,                             /* ä»»åŠ¡ä¼˜å…ˆçº§ */
+					         &AppTaskStartStk,              /* ä»»åŠ¡æ ˆ */
+					         sizeof(AppTaskStartStk));      /* ä»»åŠ¡æ ˆå¤§å° */  
+
+	/* è¿›å…¥ä¸»ç¨‹åºå¾ªç¯ä½“ */
+	while (1);
+}
