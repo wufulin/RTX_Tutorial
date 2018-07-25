@@ -36,6 +36,7 @@ __task void AppTaskStart(void);
 __task void AppTaskScan(void);
 __task void AppTaskPrintf(void);
 static void AppTaskCreate(void);
+static void TIM_CallBack1(void);
 
 /**
   ******************************************************************************
@@ -77,7 +78,7 @@ __task void AppTaskStart(void)
   while (1)
   {
     os_dly_wait(2000);
-    os_evt_set(BIT_ALL, HandleTaskPrintf);
+    // os_evt_set(BIT_ALL, HandleTaskPrintf);
     tsk_lock();
     SEGGER_RTT_printf(0, "Hello App Task Start\n");
     tsk_unlock();
@@ -118,6 +119,21 @@ __task void AppTaskPrintf(void)
       break;
     }
   }
+}
+
+/**
+  ******************************************************************************
+  *  函 数 名: TIM_CallBack1
+  *  功能说明: 定时器中断的回调函数，此函数被bsp_StartHardTimer所调用
+  *  形    参: 无
+  *  返 回 值: 无
+  ******************************************************************************
+  */
+static void TIM_CallBack1(void)
+{
+  /* 发送事件标志， 设置bit0和bit1 */
+  SEGGER_RTT_printf(0, "TIM2 Interrupt\r\n");
+  isr_evt_set(BIT_ALL, HandleTaskPrintf);
 }
 
 /**
