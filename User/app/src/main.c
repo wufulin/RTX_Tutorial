@@ -21,8 +21,8 @@
   *                                 变量声明                                     
   ******************************************************************************
   */
-static uint64_t AppTaskPrintfStk[256]; /* 任务栈 */
-static uint64_t AppTaskStartStk[256];
+static uint64_t AppTaskPrintfStk[512]; /* 任务栈 */
+static uint64_t AppTaskStartStk[512];
 static uint64_t AppTaskScanStk[256];
 static uint64_t AppTaskSemStk[256];
 
@@ -32,6 +32,8 @@ static OS_MUT mutex;     /* 互斥信号量 */
 OS_TID HandleTaskPrintf = NULL; /* 任务句柄 */
 OS_TID HandleTaskSem = NULL;
 OS_TID HandleTaskScan = NULL;
+
+os_mbx_declare(mailbox, 10); /* 声明一个支持10个消息的消息邮箱 */
 
 /**
   ******************************************************************************
@@ -117,21 +119,42 @@ __task void AppTaskScan(void)
   */
 __task void AppTaskStart(void)
 {
+  OS_RESULT xResult;
+  uint8_t *pMsg;
+
   /* 创建信号量计数值是0， 用于任务同步 */
   os_sem_init(&semaphore, 0);
 
   /* 创建互斥信号量 */
   os_mut_init(&mutex);
 
+  /* 创建消息邮箱 */
+  os_mbx_init(&mailbox, sizeof(mailbox));
+
   AppTaskCreate();
 
   while (1)
   {
-    os_dly_wait(2000);
+    // os_dly_wait(2000);
     // os_evt_set(BIT_ALL, HandleTaskPrintf);
-    tsk_lock();
-    SEGGER_RTT_printf(0, "Hello App Task Start\n");
-    tsk_unlock();
+    // tsk_lock();
+    // SEGGER_RTT_printf(0, "Hello App Task Start\n");
+    // tsk_unlock();
+    xResult = os_mbx_wait(&mailbox, (void *)&pMsg, 200);
+    switch (xResult)
+    {
+    case OS_R_OK:
+      SEGGER_RTT_printf(0, "mailbox: %d\r\n", *pMsg);
+      break;
+    case OS_R_MBX:
+      SEGGER_RTT_printf(0, "mailbox waiting: %d\r\n", *pMsg);
+      break;
+    case OS_R_TMO:
+      SEGGER_RTT_printf(0, "mailbox time out\r\n");
+      break;
+    default:
+      break;
+    }
   }
 }
 
@@ -148,6 +171,7 @@ __task void AppTaskPrintf(void)
   OS_RESULT xResult;
   const uint16_t usMaxBlockTime = 1500;
   const uint16_t usFrequency = 200;
+  uint8_t ucMsg = 0;
 
   /* 设置延迟周期 */
   os_itv_set(usFrequency);
@@ -161,6 +185,15 @@ __task void AppTaskPrintf(void)
     {
     case OS_R_EVT:
       SEGGER_RTT_printf(0, "Hello App Task Printf\n");
+      ucMsg++;
+      if (os_mbx_send(&mailbox, &ucMsg, 100) != OS_R_OK)
+      {
+        SEGGER_RTT_printf(0, "send mailbox failed\r\n");
+      }
+      else
+      {
+        SEGGER_RTT_printf(0, "send mailbox ok\r\n");
+      }
       break;
     case OS_R_TMO:
       SEGGER_RTT_printf(0, "Time out\r\n");
@@ -201,15 +234,15 @@ static void AppTaskCreate(void)
                                         &AppTaskPrintfStk,         /* 任务栈 */
                                         sizeof(AppTaskPrintfStk)); /* 任务栈大小 */
 
-  HandleTaskSem = os_tsk_create_user(AppTaskSem,                   /* 任务函数 */
-                                     1,                            /* 任务优先级 */
-                                     &AppTaskSemStk,               /* 任务栈 */
-                                     sizeof(AppTaskSemStk));       /* 任务栈大小 */
+  HandleTaskSem = os_tsk_create_user(AppTaskSem,             /* 任务函数 */
+                                     1,                      /* 任务优先级 */
+                                     &AppTaskSemStk,         /* 任务栈 */
+                                     sizeof(AppTaskSemStk)); /* 任务栈大小 */
 
-  HandleTaskScan = os_tsk_create_user(AppTaskScan,                 /* 任务函数 */
-                                      1,                           /* 任务优先级 */
-                                      &AppTaskScanStk,             /* 任务栈 */
-                                      sizeof(AppTaskScanStk));     /* 任务栈大小 */
+  HandleTaskScan = os_tsk_create_user(AppTaskScan,             /* 任务函数 */
+                                      1,                       /* 任务优先级 */
+                                      &AppTaskScanStk,         /* 任务栈 */
+                                      sizeof(AppTaskScanStk)); /* 任务栈大小 */
 
   // if (os_tsk_prio(HandleTaskPrintf, 3) == OS_R_OK)
   // {
