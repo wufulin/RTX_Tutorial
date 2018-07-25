@@ -27,6 +27,7 @@ static uint64_t AppTaskScanStk[256];
 static uint64_t AppTaskSemStk[256];
 
 static OS_SEM semaphore; /* 信号量 */
+static OS_MUT mutex;     /* 互斥信号量 */
 
 OS_TID HandleTaskPrintf = NULL; /* 任务句柄 */
 OS_TID HandleTaskSem = NULL;
@@ -94,8 +95,10 @@ __task void AppTaskScan(void)
 
   while (1)
   {
+    os_mut_wait(&mutex, 0xffff);
     SEGGER_RTT_printf(0, "Hello App Task Scan\n");
     SEGGER_RTT_printf(0, "%d\r\n", os_time_get());
+    os_mut_release(&mutex);
     // os_dly_wait(100);
     /* os_itv_wait 是绝对延迟， os_dly_wait 是相对延迟 */
     bsp_StartHardTimer(1, 50000, (void *)TIM_CallBack1);
@@ -116,6 +119,9 @@ __task void AppTaskStart(void)
 {
   /* 创建信号量计数值是0， 用于任务同步 */
   os_sem_init(&semaphore, 0);
+
+  /* 创建互斥信号量 */
+  os_mut_init(&mutex);
 
   AppTaskCreate();
 
