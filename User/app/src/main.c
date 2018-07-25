@@ -24,8 +24,13 @@
 static uint64_t AppTaskPrintfStk[256]; /* 任务栈 */
 static uint64_t AppTaskStartStk[256];
 static uint64_t AppTaskScanStk[256];
+static uint64_t AppTaskSemStk[256];
+
+static OS_SEM semaphore; /* 信号量 */
 
 OS_TID HandleTaskPrintf = NULL; /* 任务句柄 */
+OS_TID HandleTaskSem = NULL;
+OS_TID HandleTaskScan = NULL;
 
 /**
   ******************************************************************************
@@ -35,8 +40,42 @@ OS_TID HandleTaskPrintf = NULL; /* 任务句柄 */
 __task void AppTaskStart(void);
 __task void AppTaskScan(void);
 __task void AppTaskPrintf(void);
+__task void AppTaskSem(void);
 static void AppTaskCreate(void);
 static void TIM_CallBack1(void);
+
+/**
+  ******************************************************************************
+  *  函 数 名: AppTaskSem
+  *  功能说明: 信号量任务，优先级1
+  *  形    参: 无
+  *  返 回 值: 无
+  ******************************************************************************
+  */
+__task void AppTaskSem(void)
+{
+  OS_RESULT xResult;
+  const uint16_t usMaxBlockTime = 1000;
+
+  while (1)
+  {
+    xResult = os_sem_wait(&semaphore, usMaxBlockTime);
+    switch (xResult)
+    {
+    case OS_R_OK:
+      SEGGER_RTT_printf(0, "Sem No Wait\r\n");
+      break;
+    case OS_R_SEM:
+      SEGGER_RTT_printf(0, "Sem Ok in BlockTime\r\n");
+      break;
+    case OS_R_TMO:
+      SEGGER_RTT_printf(0, "Sem Timeout\r\n");
+      break;
+    default:
+      break;
+    }
+  }
+}
 
 /**
   ******************************************************************************
@@ -60,6 +99,7 @@ __task void AppTaskScan(void)
     // os_dly_wait(100);
     /* os_itv_wait 是绝对延迟， os_dly_wait 是相对延迟 */
     bsp_StartHardTimer(1, 50000, (void *)TIM_CallBack1);
+    os_sem_send(&semaphore);
     os_itv_wait();
   }
 }
@@ -74,7 +114,11 @@ __task void AppTaskScan(void)
   */
 __task void AppTaskStart(void)
 {
+  /* 创建信号量计数值是0， 用于任务同步 */
+  os_sem_init(&semaphore, 0);
+
   AppTaskCreate();
+
   while (1)
   {
     os_dly_wait(2000);
@@ -151,10 +195,15 @@ static void AppTaskCreate(void)
                                         &AppTaskPrintfStk,         /* 任务栈 */
                                         sizeof(AppTaskPrintfStk)); /* 任务栈大小 */
 
-  os_tsk_create_user(AppTaskScan,
-                     1,
-                     &AppTaskScanStk,
-                     sizeof(AppTaskScanStk));
+  HandleTaskSem = os_tsk_create_user(AppTaskSem,                   /* 任务函数 */
+                                     1,                            /* 任务优先级 */
+                                     &AppTaskSemStk,               /* 任务栈 */
+                                     sizeof(AppTaskSemStk));       /* 任务栈大小 */
+
+  HandleTaskScan = os_tsk_create_user(AppTaskScan,                 /* 任务函数 */
+                                      1,                           /* 任务优先级 */
+                                      &AppTaskScanStk,             /* 任务栈 */
+                                      sizeof(AppTaskScanStk));     /* 任务栈大小 */
 
   // if (os_tsk_prio(HandleTaskPrintf, 3) == OS_R_OK)
   // {
